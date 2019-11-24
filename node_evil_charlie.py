@@ -1,5 +1,4 @@
-from cqc.pythonLib import CQCConnection, qubit
-import random
+from cqc.pythonLib import CQCConnection
 import json
 
 N_QUBIT = 10
@@ -34,13 +33,8 @@ while True:
         
         # Ok, I have all the qubits, now let's elaborate them
         
-        # The master (always the first node) do a cNOT (qubit by qubit) onto the second node (target)
-        #for i in range(N_QUBIT):
-            #first_node_qubits[i].cnot(second_node_qubits[i])
-        
-        # And now let's apply the Hadamard Gate to the qubits of the master
-        #for i in range(N_QUBIT):
-            #first_node_qubits[i].H()
+        # Nope! I'm the *evil* Charlie, so I do not do what I am supposed to do :)
+        # ...
         
         # Finally create and send the matrix of measurements
         measurements_matrix = []

@@ -35,12 +35,12 @@ with CQCConnection("Bob") as Bob:
         Bob.sendQubit(qubit, "Charlie")
     
     # Receive the resulting matrix from Charlie
-    matrix = json.loads(Bob.recvClassical().decode("utf-8"))
+    matrix = json.loads(Bob.recvClassical(msg_size=65536).decode("utf-8"))
 
     time.sleep(1)
 
     # Read vector H
-    hother_vector = json.loads(Bob.recvClassical().decode("utf-8"))
+    hother_vector = json.loads(Bob.recvClassical(msg_size=65536).decode("utf-8"))
 
     # Send vector H
     Bob.sendClassical("Alice", json.dumps(h_vector).encode("utf-8"))
@@ -76,3 +76,32 @@ with CQCConnection("Bob") as Bob:
     # Print the key obtained
     print("~Bob    # " + repr(key))
     print("~Bob    # Key length: " + str(len(key)))
+
+    # Key symmetrization phase
+    if not im_master:
+        symmetr_length = int(len(key) / 3)
+        Bob.sendClassical("Alice", json.dumps(key[:symmetr_length]).encode("utf-8"))
+        symmetr_settlement = json.loads(Bob.recvClassical().decode("utf-8"))
+        if symmetr_settlement == "CHARLIE_IS_EVIL":
+            print("~Bob    # Charlie is evil: I'm destroying the key")
+            key = None
+        elif symmetr_settlement == "CHARLIE_IS_GOOD":
+            print("~Bob    # Charlie is good: key is usable")
+            print("~Bob    # Usable key: " + repr(key[symmetr_length:]))
+    else:
+        symmetr_key = json.loads(Bob.recvClassical(msg_size=65536).decode("utf-8"))
+        symmetr_length = len(symmetr_key)
+        key_errors = 0
+        for i in range(symmetr_length):
+            if symmetr_key[i] != key[i]:
+                key_errors += 1
+        qber = key_errors / symmetr_length
+        print("~Bob    # QBER = " + str(qber))
+        if symmetr_key == key[:symmetr_length]:
+            Bob.sendClassical("Alice", json.dumps("CHARLIE_IS_GOOD").encode("utf-8"))
+            print("~Bob    # Charlie is good: key is usable")
+            print("~Bob    # Usable key: " + repr(key[symmetr_length:]))
+        else:
+            Bob.sendClassical("Alice", json.dumps("CHARLIE_IS_EVIL").encode("utf-8"))
+            print("~Bob    # Charlie is evil: I'm destroying the key")
+            key = None

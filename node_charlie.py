@@ -1,5 +1,4 @@
-from cqc.pythonLib import CQCConnection, qubit
-import random
+from cqc.pythonLib import CQCConnection
 import json
 
 N_QUBIT = 10

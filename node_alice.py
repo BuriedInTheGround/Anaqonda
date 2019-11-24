@@ -35,7 +35,7 @@ with CQCConnection("Alice") as Alice:
         Alice.sendQubit(qubit, "Charlie")
     
     # Receive the resulting matrix from Charlie
-    matrix = json.loads(Alice.recvClassical().decode("utf-8"))
+    matrix = json.loads(Alice.recvClassical(msg_size=65536).decode("utf-8"))
 
     time.sleep(1)
 
@@ -43,7 +43,7 @@ with CQCConnection("Alice") as Alice:
     Alice.sendClassical("Bob", json.dumps(h_vector).encode("utf-8"))
 
     # Read vector H
-    hother_vector = json.loads(Alice.recvClassical().decode("utf-8"))
+    hother_vector = json.loads(Alice.recvClassical(msg_size=65536).decode("utf-8"))
 
     if im_master:
         # Flips the necessary bits based on matrix correlation
@@ -76,3 +76,32 @@ with CQCConnection("Alice") as Alice:
     # Print the key obtained
     print("~Alice  # " + repr(key))
     print("~Alice  # Key length: " + str(len(key)))
+
+    # Key symmetrization phase
+    if not im_master:
+        symmetr_length = int(len(key) / 3)
+        Alice.sendClassical("Bob", json.dumps(key[:symmetr_length]).encode("utf-8"))
+        symmetr_settlement = json.loads(Alice.recvClassical().decode("utf-8"))
+        if symmetr_settlement == "CHARLIE_IS_EVIL":
+            print("~Alice  # Charlie is evil: I'm destroying the key")
+            key = None
+        elif symmetr_settlement == "CHARLIE_IS_GOOD":
+            print("~Alice  # Charlie is good: key is usable")
+            print("~Alice  # Usable key: " + repr(key[symmetr_length:]))
+    else:
+        symmetr_key = json.loads(Alice.recvClassical(msg_size=65536).decode("utf-8"))
+        symmetr_length = len(symmetr_key)
+        key_errors = 0
+        for i in range(symmetr_length):
+            if symmetr_key[i] != key[i]:
+                key_errors += 1
+        qber = key_errors / symmetr_length
+        print("~Alice  # QBER = " + str(qber))
+        if symmetr_key == key[:symmetr_length]:
+            Alice.sendClassical("Bob", json.dumps("CHARLIE_IS_GOOD").encode("utf-8"))
+            print("~Alice  # Charlie is good: key is usable")
+            print("~Alice  # Usable key: " + repr(key[symmetr_length:]))
+        else:
+            Alice.sendClassical("Bob", json.dumps("CHARLIE_IS_EVIL").encode("utf-8"))
+            print("~Alice  # Charlie is evil: I'm destroying the key")
+            key = None
